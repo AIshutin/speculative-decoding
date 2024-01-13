@@ -1,4 +1,5 @@
 # speculative-decoding
-My implementation of "Fast Inference from Transformers via Speculative Decoding". 
 
-Original [paper](https://arxiv.org/abs/2211.17192).
+Implementation of ["Fast Inference from Transformers via Speculative Decoding"](https://arxiv.org/abs/2211.17192). Feel free to copy & modify this code for your needs.
+
+Only T5 models are supported at the moment.
