@@ -2,7 +2,7 @@ from transformers import AutoTokenizer, T5ForConditionalGeneration, AutoModel
 import torch
 import argparse
 from datasets import load_dataset
-from utils import argmax_sampling, fix_state
+from utils import argmax_sampling, fix_state, identity_sampling
 from tqdm import tqdm
 import time
 import json
@@ -43,7 +43,7 @@ class NormalEncodingEncDec:
                 idx = torch.searchsorted(probs.cumsum(0), torch.rand(1, device=self.device))
                 generated.append(idx.item())
                 new_word = idx.reshape(-1)
-            return generated
+            return generated, len(generated), len(generated)
 
 
 class SpecInferencerEncDec:
@@ -61,6 +61,8 @@ class SpecInferencerEncDec:
     
     def inference(self, prefix, max_new_tokens=32, temperature=1.0):
         prefix = prefix.to(self.device)
+        predicted_ok = 0
+        iterations = 0
 
         with torch.no_grad():
             generated = []
@@ -74,6 +76,7 @@ class SpecInferencerEncDec:
             dmodel_encoder_outputs = (dmodel_output.last_hidden_state, )
         
             while len(generated) < max_new_tokens:
+                iterations += 1
                 proposals = []
                 current_new_word = new_word
                 for i in range(min(self.gamma, max_new_tokens - len(generated))):
@@ -111,6 +114,7 @@ class SpecInferencerEncDec:
                 
                 for i in range(len(true_distributions)):
                     token_idx = proposals[i][0]
+                    predicted_ok += 1
                     if proposals[i][1][token_idx] <= true_distributions[i][token_idx]:
                         good_tokens += 1
                     else:
@@ -129,7 +133,7 @@ class SpecInferencerEncDec:
                 for i, el in enumerate(new_words[:good_tokens]):
                     generated.append(el.item())
                     if el == self.eos:
-                        return generated
+                        return generated, predicted_ok, iterations
                 
                 rollback = len(new_words) - good_tokens - 1
                 last_model_state = fix_state(last_model_state, rollback=rollback)
@@ -139,11 +143,12 @@ class SpecInferencerEncDec:
                     generated.append(new_word.item())
                     break
                 assert(isinstance(new_word, torch.Tensor))
-            return generated
+            return generated, predicted_ok, iterations
 
 
 name2sampling_method = {
     "argmax": argmax_sampling,
+    "identity": identity_sampling
 }
 
 
@@ -159,10 +164,16 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    tokenizer = AutoTokenizer.from_pretrained(args.model, model_max_length=512)
 
     model = T5ForConditionalGeneration.from_pretrained(args.model).to(device)
-    dmodel = T5ForConditionalGeneration.from_pretrained(args.draft).to(device)
-    tokenizer = AutoTokenizer.from_pretrained(args.model, model_max_length=512)
+    if args.draft == 'unigram':
+        from unigram_utils import UnigramModel
+        dmodel = UnigramModel(32128)
+        dmodel.load_state_dict(torch.load('unigram_model.pt'))
+        dmodel = dmodel.to(device)
+    else:
+        dmodel = T5ForConditionalGeneration.from_pretrained(args.draft).to(device)
 
     input = tokenizer('translate from English to German: I like apple pies', return_tensors='pt')['input_ids']
     bos = torch.tensor(tokenizer.pad_token_id)
@@ -181,15 +192,22 @@ if __name__ == "__main__":
         desc = "Normal Decoding"
     
     start = time.time()
+    total_iterations = 0
+    total_accepted_predictions = 0
+
     for i, el in enumerate(tqdm(dataset, desc=desc)):
         text = prefix + el['translation']['en']
         prompt = tokenizer(text, return_tensors='pt')['input_ids']
-        output = inferencer.inference(prompt, max_new_tokens=args.max_new_tokens, 
-                                        temperature=args.t)
+        output, accepted_predictions, iterations = inferencer.inference(prompt, 
+                                                                        max_new_tokens=args.max_new_tokens, 
+                                                                        temperature=args.t)
+        total_iterations += iterations
+        total_accepted_predictions += accepted_predictions
     end = time.time()
     elapsed = end - start
     with open(args.logfile, 'a') as file:
         tmp = args.__dict__
         tmp['elapsed'] = elapsed
+        tmp['E_tok'] = total_accepted_predictions / total_iterations
         print(json.dumps(tmp), file=file)
 

@@ -8,9 +8,12 @@ def argmax_sampling(logits): # Tensor [vocab_size]
     logits[argmax_id] = 100
     return logits
 
+def identity_sampling(logits):
+    return logits
+
 
 def fix_state(state, rollback):
-    if rollback == 0:
+    if rollback == 0 or state is None:
         return state
     state = list(state)
     for i in range(len(state)):
