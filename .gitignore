@@ -1,4 +1,5 @@
 unigram_model.pt
+experiments*.txt
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
