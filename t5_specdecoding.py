@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
     model = T5ForConditionalGeneration.from_pretrained(args.model).to(device)
     if args.draft == 'unigram':
-        from unigram_utils import UnigramModel
+        from unigram_utils_t5 import UnigramModel
         dmodel = UnigramModel(32128)
         dmodel.load_state_dict(torch.load('unigram_model.pt'))
         dmodel = dmodel.to(device)
@@ -182,7 +182,6 @@ if __name__ == "__main__":
 
     dataset = load_dataset("wmt14", 'de-en', split="validation")
     prefix = "translate English to German: "
-    text = prefix + "This summer I am going to plant a bomb under the parlament"
 
     if args.gamma != 0:
         inferencer = SpecInferencerEncDec(model, dmodel, bos, eos, args.gamma, method, device)

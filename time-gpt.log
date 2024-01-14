@@ -1,0 +1,3 @@
+{"t": 1.0, "gamma": 0, "model": "Enoch/llama-7b-hf", "draft": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T", "sampling": "argmax", "max_new_tokens": 64, "logfile": "time-gpt.log", "limit": 1000, "elapsed": 2163.387101173401, "E_tok": 1.0}
+{"t": 1.0, "gamma": 3, "model": "Enoch/llama-7b-hf", "draft": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T", "sampling": "argmax", "max_new_tokens": 64, "logfile": "time-gpt.log", "limit": 1000, "elapsed": 2716.5679199695587, "E_tok": 2.4936206628286914}
+{"t": 1.0, "gamma": 5, "model": "Enoch/llama-7b-hf", "draft": "TinyLlama/TinyLlama-1.1B-intermediate-step-1431k-3T", "sampling": "argmax", "max_new_tokens": 64, "logfile": "time-gpt.log", "limit": 1000, "elapsed": 2848.592795610428, "E_tok": 3.451012058570198}
